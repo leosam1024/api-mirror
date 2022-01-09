@@ -1,0 +1,12 @@
+# http服务启动端口
+port: 8899
+
+proxyConfig:
+  - desc: "订阅转换服务"
+    path: "/sub"                    # URL中PATH 不包含参数
+    timeOut: 5000                   # 超时时间 单位毫秒
+    hosts: # 要替换host
+      - "https://sub.id9.cc"
+      - "https://sub.xeton.dev"
+      - "https://api.dler.io"
+      - "https://sub.maoxiongnet.com"
