@@ -24,13 +24,17 @@ proxyConfig:
   - desc: "订阅转换服务"
     path: "/sub"                    # URL中PATH 不包含参数
     timeOut: 5000                   # 超时时间 单位毫秒
-    hosts: # 要替换host
+    hosts: # 要并发访问的host
       - "https://sub.id9.cc"
       - "https://sub.xeton.dev"
       - "https://api.dler.io"
       - "https://sub.maoxiongnet.com"
 
 ~~~
+**使用**
+1. 启动服务后。
+2. 访问xxx:port/sub?xxxx网址
+3. 后端就会把网址替换为多个域名地址，并发访问，并返回最快响应的
 
 ## License
 
