@@ -4,7 +4,10 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
+	"os"
+	"regexp"
 	"strconv"
 	"time"
 )
@@ -14,6 +17,10 @@ func startWeb() {
 	// 设置路由器
 	port := ProjectConfig.Port
 	configs := ProjectConfig.ProxyConfigs
+	// 如果在环境变量里定义了端口号，则用环境变量中的
+	if len(os.Getenv(EvnMirrorPort)) > 0 && IsNum(os.Getenv(EvnMirrorPort)) {
+		port, _ = strconv.Atoi(os.Getenv(EvnMirrorPort))
+	}
 
 	for i := 0; i < len(configs); i++ {
 		http.HandleFunc(configs[0].Path, proxyHandler)
@@ -51,13 +58,7 @@ func proxyHandler(writer http.ResponseWriter, request *http.Request) {
 	userAgent := request.UserAgent()
 	path := request.URL.Path
 	requestURI := request.RequestURI
-	var config ProxyConfig
-	for i := 0; i < len(configs); i++ {
-		config = configs[i]
-		if path == config.Path {
-			break
-		}
-	}
+	var config = findProxyConfig(configs, path)
 	//urls := []string{"http://m2.auto.itc.cn/car/theme/newdb/images/favicon.ico", "https://www.google.com"}
 
 	timeout := time.Duration(config.TimeOut)
@@ -69,7 +70,43 @@ func proxyHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 	fmt.Fprintf(writer, content)
 
-	log.Info("请求成功，耗时", time.Now().UnixMilli()-t, "毫秒", " 使用HOST：["+host+"]", "Path：[", requestURI, "]")
+	log.Infof("请求成功，耗时%d毫秒，Limit：[%d]，使用HOST：[%s]，Path：[%s]",
+		time.Now().UnixMilli()-t, config.Limit, host, requestURI)
+}
+
+func findProxyConfig(configs []ProxyConfig, path string) ProxyConfig {
+	var proxyConfig ProxyConfig
+	for i := 0; i < len(configs); i++ {
+		config := configs[i]
+		if path == config.Path {
+			// 深复制一份
+			copyHosts := make([]string, len(config.Hosts))
+			copy(copyHosts, config.Hosts)
+			proxyConfig = ProxyConfig{
+				Desc:    config.Desc,
+				Path:    config.Path,
+				TimeOut: config.TimeOut,
+				Limit:   config.Limit,
+				Hosts:   copyHosts,
+			}
+			break
+		}
+	}
+	if proxyConfig.isEmpty() {
+		return proxyConfig
+	}
+
+	// 如果hosts的数量 超出Limit 。 则从 Hosts 随机取出Limit个
+	if proxyConfig.Limit < len(proxyConfig.Hosts) {
+		rand.Seed(time.Now().Unix())
+		rand.Shuffle(
+			len(proxyConfig.Hosts),
+			func(i, j int) { proxyConfig.Hosts[i], proxyConfig.Hosts[j] = proxyConfig.Hosts[j], proxyConfig.Hosts[i] },
+		)
+		proxyConfig.Hosts = proxyConfig.Hosts[0:proxyConfig.Limit]
+	}
+
+	return proxyConfig
 }
 
 func mirroredQuery(hosts []string, requestURI string, method string, userAgent string, timeOut time.Duration) (string, string, http.Header) {
@@ -129,4 +166,9 @@ func getRequestByAll(url string, method string, userAgent string, timeOut time.D
 	result, _ := ioutil.ReadAll(resp.Body)
 
 	return string(result), resp.Header
+}
+
+func IsNum(s string) bool {
+	match, _ := regexp.MatchString(`^[\+-]?\d+$`, s)
+	return match
 }

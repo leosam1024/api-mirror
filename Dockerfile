@@ -8,7 +8,8 @@ RUN go mod download && go build
 
 FROM alpine:latest
 LABEL anme="api-mirror"
-ENV MIRRPR-PROT=8899
+# 如果在环境变量里定义了端口号，则用环境变量中的
+# ENV MIRROR-PORT=8899
 EXPOSE 8899
 COPY --from=builder /api-mirror /
 ENTRYPOINT ["/api-mirror"]

@@ -5,11 +5,13 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"time"
 )
 
 const (
 	DefaultTimeoutDuration time.Duration = 5000
+	EvnMirrorPort          string        = "MIRROR-PORT"
 )
 
 type ServerProjectConfig struct {
@@ -21,7 +23,12 @@ type ProxyConfig struct {
 	Desc    string   `yaml:"desc"`
 	Path    string   `yaml:"path"`
 	TimeOut int      `yaml:"timeOut"`
+	Limit   int      `yaml:"limit"`
 	Hosts   []string `yaml:"hosts"`
+}
+
+func (x ProxyConfig) isEmpty() bool {
+	return reflect.DeepEqual(x, ProxyConfig{})
 }
 
 var ProjectConfig ServerProjectConfig
