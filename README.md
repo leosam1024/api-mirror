@@ -22,7 +22,18 @@ port: 8899
 
 proxyConfig:
   - desc: "订阅转换服务"
-    path: "/sub"                    # URL中PATH 不包含参数
+    paths: # URL中PATH 不包含参数 。 可以配置多个
+      - "/sub"
+      - "/version"
+      - "/readconf"
+      - "/updateconf"
+      - "/getruleset"
+      - "/getprofile"
+      - "/qx-script"
+      - "/qx-rewrite"
+      - "/render"
+      - "/convert"
+      - "/getlocal"
     timeOut: 5000                   # 超时时间 单位毫秒
     limit: 3                        # 如果hosts数量过多，则随机选limit个进行请求
     hosts: # 要并发访问的host

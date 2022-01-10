@@ -22,13 +22,23 @@ func startWeb() {
 		port, _ = strconv.Atoi(os.Getenv(EvnMirrorPort))
 	}
 
-	for i := 0; i < len(configs); i++ {
-		http.HandleFunc(configs[0].Path, proxyHandler)
-	}
-
 	http.HandleFunc("/", indexHandler)
 
-	log.Info("Starting listen on ", port)
+	for i := 0; i < len(configs); i++ {
+		config := configs[i]
+		if len(config.Paths) == 0 {
+			continue
+		}
+		for _, path := range config.Paths {
+			if len(path) == 0 {
+				continue
+			}
+			http.HandleFunc(path, proxyHandler)
+			log.Infof("add http HandleFunc success, desc:[%s], path:[%s]", config.Desc, path)
+		}
+	}
+
+	log.Info("Starting http listen on ", port)
 
 	// 启动web服务
 	err := http.ListenAndServe(
@@ -43,10 +53,23 @@ func startWeb() {
 
 // indexHandler 首页Handler
 func indexHandler(writer http.ResponseWriter, request *http.Request) {
-	if request.URL.RequestURI() == "/favicon.ico" {
+	requestURI := request.URL.RequestURI()
+	// favicon
+	if requestURI == "/favicon.ico" {
 		return
 	}
-	fmt.Fprintf(writer, "api-mirror running...")
+
+	// 首页
+	matchIndex, _ := regexp.MatchString(`^(/|/index.html|index)$`, requestURI)
+	if matchIndex {
+		fmt.Fprintf(writer, "api-mirror running...")
+		return
+	}
+
+	// 其他未找到代理器的报错
+	log.Infof("not find HandleFunc, path:[%s]", requestURI)
+	fmt.Fprintf(writer, "not find HandleFunc, path:[%s]", requestURI)
+
 }
 
 // proxyHandler 转发Handler  并发请求多个网址，返回最快的
@@ -78,13 +101,13 @@ func findProxyConfig(configs []ProxyConfig, path string) ProxyConfig {
 	var proxyConfig ProxyConfig
 	for i := 0; i < len(configs); i++ {
 		config := configs[i]
-		if path == config.Path {
+		if len(config.Paths) > 0 && contains(path, config.Paths) {
 			// 深复制一份
 			copyHosts := make([]string, len(config.Hosts))
 			copy(copyHosts, config.Hosts)
 			proxyConfig = ProxyConfig{
 				Desc:    config.Desc,
-				Path:    config.Path,
+				Paths:   config.Paths,
 				TimeOut: config.TimeOut,
 				Limit:   config.Limit,
 				Hosts:   copyHosts,
@@ -171,4 +194,13 @@ func getRequestByAll(url string, method string, userAgent string, timeOut time.D
 func IsNum(s string) bool {
 	match, _ := regexp.MatchString(`^[\+-]?\d+$`, s)
 	return match
+}
+
+func contains(target string, strArray []string) bool {
+	for _, element := range strArray {
+		if target == element {
+			return true
+		}
+	}
+	return false
 }

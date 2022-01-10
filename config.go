@@ -21,7 +21,7 @@ type ServerProjectConfig struct {
 
 type ProxyConfig struct {
 	Desc    string   `yaml:"desc"`
-	Path    string   `yaml:"path"`
+	Paths   []string `yaml:"paths"`
 	TimeOut int      `yaml:"timeOut"`
 	Limit   int      `yaml:"limit"`
 	Hosts   []string `yaml:"hosts"`
