@@ -20,11 +20,12 @@ type ServerProjectConfig struct {
 }
 
 type ProxyConfig struct {
-	Desc    string   `yaml:"desc"`
-	Paths   []string `yaml:"paths"`
-	TimeOut int      `yaml:"timeOut"`
-	Limit   int      `yaml:"limit"`
-	Hosts   []string `yaml:"hosts"`
+	Desc       string   `yaml:"desc"`
+	Paths      []string `yaml:"paths"`
+	TimeOut    int      `yaml:"timeOut"`
+	Limit      int      `yaml:"limit"`
+	Hosts      []string `yaml:"hosts"`
+	RespHeader []string `yaml:"respHeader"`
 }
 
 func (x ProxyConfig) isEmpty() bool {
@@ -74,8 +75,11 @@ func initConfig(configFile string) {
 	if err1 != nil {
 		log.Info("error")
 	}
+	for index, configs := range ProjectConfig.ProxyConfigs {
+		ProjectConfig.ProxyConfigs[index].RespHeader = append(configs.RespHeader, "Content-Type")
+	}
 
 	//通过访问结构体成员获取yaml文件中对应的key-value
 	// fmt.Println(serverConfig.Port)
-	// fmt.Println(serverConfig.ProxyConfigs)
+	//fmt.Println(ProjectConfig.ProxyConfigs)
 }

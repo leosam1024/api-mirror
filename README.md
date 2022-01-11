@@ -4,8 +4,7 @@
 
 <h4 align="center">一个十分简单的转发工具</h4>
 
-
-指定一个URL后，可以同时对多个API地址发起请求，返回最快的哪一个。 
+指定一个URL后，可以同时对多个API地址发起请求，返回最快的哪一个。
 
 ## Features
 
@@ -13,9 +12,10 @@
 - 可以指定超时时间
 - 可以指定多个并发域名
 
-
 ## CONFIG
+
 **配置示例**
+
 ~~~
 # http服务启动端口
 port: 8899
@@ -41,8 +41,13 @@ proxyConfig:
       - "https://sub.xeton.dev"
       - "https://api.dler.io"
       - "https://sub.maoxiongnet.com"
+    respHeader: # 要转发的响应头header，大小写敏感
+      - "Server"
+      - "server"
 ~~~
+
 **使用**
+
 1. 启动服务后。
 2. 访问xxx:port/sub?xxxx网址
 3. 后端就会把网址替换为多个域名地址，并发访问，并返回最快响应的

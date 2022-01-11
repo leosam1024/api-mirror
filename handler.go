@@ -84,13 +84,21 @@ func proxyHandler(writer http.ResponseWriter, request *http.Request) {
 	var config = findProxyConfig(configs, path)
 	//urls := []string{"http://m2.auto.itc.cn/car/theme/newdb/images/favicon.ico", "https://www.google.com"}
 
-	timeout := time.Duration(config.TimeOut)
+	content, host, header := mirroredQuery(config.Hosts, requestURI, method, userAgent, time.Duration(config.TimeOut))
 
-	content, host, head := mirroredQuery(config.Hosts, requestURI, method, userAgent, timeout)
-
-	if len(head["Content-Type"]) > 0 {
-		writer.Header().Set("Content-Type", head["Content-Type"][0])
+	if len(config.RespHeader) > 0 {
+		wHeader := writer.Header()
+		for _, respHeader := range config.RespHeader {
+			if len(header[respHeader]) <= 0 {
+				continue
+			}
+			wHeader.Del(respHeader)
+			for _, h := range header[respHeader] {
+				wHeader.Add(respHeader, h)
+			}
+		}
 	}
+
 	fmt.Fprintf(writer, content)
 
 	log.Infof("请求成功，耗时%d毫秒，Limit：[%d]，使用HOST：[%s]，Path：[%s]",
@@ -106,11 +114,12 @@ func findProxyConfig(configs []ProxyConfig, path string) ProxyConfig {
 			copyHosts := make([]string, len(config.Hosts))
 			copy(copyHosts, config.Hosts)
 			proxyConfig = ProxyConfig{
-				Desc:    config.Desc,
-				Paths:   config.Paths,
-				TimeOut: config.TimeOut,
-				Limit:   config.Limit,
-				Hosts:   copyHosts,
+				Desc:       config.Desc,
+				Paths:      config.Paths,
+				TimeOut:    config.TimeOut,
+				Limit:      config.Limit,
+				Hosts:      copyHosts,
+				RespHeader: config.RespHeader,
 			}
 			break
 		}
@@ -124,7 +133,9 @@ func findProxyConfig(configs []ProxyConfig, path string) ProxyConfig {
 		rand.Seed(time.Now().Unix())
 		rand.Shuffle(
 			len(proxyConfig.Hosts),
-			func(i, j int) { proxyConfig.Hosts[i], proxyConfig.Hosts[j] = proxyConfig.Hosts[j], proxyConfig.Hosts[i] },
+			func(i, j int) {
+				proxyConfig.Hosts[i], proxyConfig.Hosts[j] = proxyConfig.Hosts[j], proxyConfig.Hosts[i]
+			},
 		)
 		proxyConfig.Hosts = proxyConfig.Hosts[0:proxyConfig.Limit]
 	}

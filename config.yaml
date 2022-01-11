@@ -22,3 +22,6 @@ proxyConfig:
       - "https://sub.xeton.dev"
       - "https://api.dler.io"
       - "https://sub.maoxiongnet.com"
+    respHeader: # 要转发的响应头header，大小写敏感
+      - "Server"
+      - "server"
