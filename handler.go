@@ -29,6 +29,7 @@ func startWeb() {
 		if len(config.Paths) == 0 {
 			continue
 		}
+		log.Infof("start add http HandleFunc success, desc:[%s], filter:[%+v]", config.Desc, config.Filter)
 		for _, path := range config.Paths {
 			if len(path) == 0 {
 				continue
@@ -84,11 +85,19 @@ func proxyHandler(writer http.ResponseWriter, request *http.Request) {
 	var config = findProxyConfig(configs, path)
 	//urls := []string{"http://m2.auto.itc.cn/car/theme/newdb/images/favicon.ico", "https://www.google.com"}
 
-	content, host, header := mirroredQuery(config.Hosts, requestURI, method, userAgent, time.Duration(config.TimeOut))
+	// 开启限流器
+	if config.Filter.Limiter != nil && !config.Filter.Limiter.Allow() {
+		fmt.Fprintf(writer, "QPS超出系统限制，请稍后再试")
 
-	if len(config.RespHeader) > 0 {
+		log.Warnf("限流成功，每秒限流QPS：[%.1f],Path：[%s]", config.Filter.Limiter.Limit(), requestURI)
+		return
+	}
+
+	content, host, header := mirroredQuery(config.Hosts, requestURI, method, userAgent, time.Duration(config.Filter.TimeOut))
+
+	if len(config.Filter.RespHeader) > 0 {
 		wHeader := writer.Header()
-		for _, respHeader := range config.RespHeader {
+		for _, respHeader := range config.Filter.RespHeader {
 			if len(header[respHeader]) <= 0 {
 				continue
 			}
@@ -102,7 +111,7 @@ func proxyHandler(writer http.ResponseWriter, request *http.Request) {
 	fmt.Fprintf(writer, content)
 
 	log.Infof("请求成功，耗时%d毫秒，Limit：[%d]，使用HOST：[%s]，Path：[%s]",
-		time.Now().UnixMilli()-t, config.Limit, host, requestURI)
+		time.Now().UnixMilli()-t, config.Filter.LimitHosts, host, requestURI)
 }
 
 func findProxyConfig(configs []ProxyConfig, path string) ProxyConfig {
@@ -114,12 +123,10 @@ func findProxyConfig(configs []ProxyConfig, path string) ProxyConfig {
 			copyHosts := make([]string, len(config.Hosts))
 			copy(copyHosts, config.Hosts)
 			proxyConfig = ProxyConfig{
-				Desc:       config.Desc,
-				Paths:      config.Paths,
-				TimeOut:    config.TimeOut,
-				Limit:      config.Limit,
-				Hosts:      copyHosts,
-				RespHeader: config.RespHeader,
+				Desc:   config.Desc,
+				Paths:  config.Paths,
+				Hosts:  copyHosts,
+				Filter: config.Filter,
 			}
 			break
 		}
@@ -129,7 +136,7 @@ func findProxyConfig(configs []ProxyConfig, path string) ProxyConfig {
 	}
 
 	// 如果hosts的数量 超出Limit 。 则从 Hosts 随机取出Limit个
-	if proxyConfig.Limit < len(proxyConfig.Hosts) {
+	if proxyConfig.Filter.LimitHosts < len(proxyConfig.Hosts) {
 		rand.Seed(time.Now().Unix())
 		rand.Shuffle(
 			len(proxyConfig.Hosts),
@@ -137,7 +144,7 @@ func findProxyConfig(configs []ProxyConfig, path string) ProxyConfig {
 				proxyConfig.Hosts[i], proxyConfig.Hosts[j] = proxyConfig.Hosts[j], proxyConfig.Hosts[i]
 			},
 		)
-		proxyConfig.Hosts = proxyConfig.Hosts[0:proxyConfig.Limit]
+		proxyConfig.Hosts = proxyConfig.Hosts[0:proxyConfig.Filter.LimitHosts]
 	}
 
 	return proxyConfig

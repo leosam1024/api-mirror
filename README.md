@@ -34,16 +34,18 @@ proxyConfig:
       - "/render"
       - "/convert"
       - "/getlocal"
-    timeOut: 5000                   # 超时时间 单位毫秒
-    limit: 3                        # 如果hosts数量过多，则随机选limit个进行请求
     hosts: # 要并发访问的host
       - "https://sub.id9.cc"
       - "https://sub.xeton.dev"
       - "https://api.dler.io"
       - "https://sub.maoxiongnet.com"
-    respHeader: # 要转发的响应头header，大小写敏感
-      - "Server"
-      - "server"
+    filter:
+      limitQps: 4           # 限流器，每秒只允许limiterQps访问,超过就
+      limitHosts: 3         # 如果hosts数量过多，则随机选limit个进行请求
+      timeOut: 5000         # 超时时间 单位毫秒
+      respHeader: # 要转发的响应头header，大小写敏感
+        - "Server"
+        - "server"
 ~~~
 
 **使用**

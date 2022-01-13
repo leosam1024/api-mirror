@@ -2,6 +2,7 @@ package main
 
 import (
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
@@ -20,12 +21,18 @@ type ServerProjectConfig struct {
 }
 
 type ProxyConfig struct {
-	Desc       string   `yaml:"desc"`
-	Paths      []string `yaml:"paths"`
+	Desc   string            `yaml:"desc"`
+	Paths  []string          `yaml:"paths"`
+	Hosts  []string          `yaml:"hosts"`
+	Filter ProxyConfigFilter `yaml:"filter"`
+}
+
+type ProxyConfigFilter struct {
 	TimeOut    int      `yaml:"timeOut"`
-	Limit      int      `yaml:"limit"`
-	Hosts      []string `yaml:"hosts"`
+	LimitHosts int      `yaml:"limitHosts"`
+	LimitQps   int      `yaml:"limitQps"`
 	RespHeader []string `yaml:"respHeader"`
+	Limiter    *rate.Limiter
 }
 
 func (x ProxyConfig) isEmpty() bool {
@@ -73,10 +80,17 @@ func initConfig(configFile string) {
 	//yaml文件内容影射到结构体中
 	err1 := yaml.Unmarshal(config, &ProjectConfig)
 	if err1 != nil {
-		log.Info("error")
+		log.Error("config.yaml 解析有问题", err1)
 	}
 	for index, configs := range ProjectConfig.ProxyConfigs {
-		ProjectConfig.ProxyConfigs[index].RespHeader = append(configs.RespHeader, "Content-Type")
+		// 设置默认返回响应头
+		ProjectConfig.ProxyConfigs[index].Filter.RespHeader = append(configs.Filter.RespHeader, "Content-Type")
+		// 设置限流器
+		if ProjectConfig.ProxyConfigs[index].Filter.LimitQps > 0 {
+			ProjectConfig.ProxyConfigs[index].Filter.Limiter = rate.NewLimiter(rate.Limit(ProjectConfig.ProxyConfigs[index].Filter.LimitQps), ProjectConfig.ProxyConfigs[index].Filter.LimitQps)
+		} else {
+			ProjectConfig.ProxyConfigs[index].Filter.Limiter = nil
+		}
 	}
 
 	//通过访问结构体成员获取yaml文件中对应的key-value
