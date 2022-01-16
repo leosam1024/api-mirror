@@ -140,8 +140,10 @@ func initConfig(configFile string) {
 				!strings.Contains(ProjectConfig.ProxyConfigs[index].Paths[i].MatchType, PathMatchTypeRegexp) {
 				log.Errorf("desc:[%s],path:[%s],匹配模式不对，matchType：[%s]", ProjectConfig.ProxyConfigs[index].Desc, ProjectConfig.ProxyConfigs[index].Paths[i].Path, ProjectConfig.ProxyConfigs[index].Paths[i].MatchType)
 			}
-			log.Infof("add HandleFunc success, desc:[%s], path:[%s]",
-				ProjectConfig.ProxyConfigs[index].Desc, ProjectConfig.ProxyConfigs[index].Paths[i].Path)
+			log.Infof("add HandleFunc success, desc:[%s], path:[%s], matchType：[%s]",
+				ProjectConfig.ProxyConfigs[index].Desc,
+				ProjectConfig.ProxyConfigs[index].Paths[i].Path,
+				ProjectConfig.ProxyConfigs[index].Paths[i].MatchType)
 		}
 	}
 

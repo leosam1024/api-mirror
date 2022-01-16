@@ -16,7 +16,7 @@
 
 **配置示例**
 
-~~~
+~~~yaml
 # http服务启动端口
 port: 8899
 
@@ -62,17 +62,28 @@ proxyConfig:
         - "Set-Cookie"
 ~~~
 
-**使用**
+## 安装和启动
 
-1. 启动服务后。
-2. 访问xxx:port/sub?xxxx网址
-3. 后端就会把网址替换为多个域名地址，并发访问，并返回最快响应的
+### 使用
 
-**使用docker进行**
+1. 编辑配置文件config.yaml
+2. 启动服务后。
+3. 访问xxx:port/sub?xxxx网址
+4. 后端就会把网址替换为多个域名地址，并发访问，并返回最快响应的
+
+### 从源码编译
+
+需要安装Golang
+
+```sh
+$ go get -u -v github.com/leosam2048/api-mirror
+```
+
+### 使用docker进行启动
 
 注：需要自行安装git和docker环境
 
-~~~
+~~~sh
 # 拉取git仓库
 git clone https://github.com/leosam2048/api-mirror.git
 
@@ -94,6 +105,10 @@ docker run -p 8899:8899 -v /opt/api-mirror/leo.yaml:/config.yaml  api-mirror:lat
 # 如果再次构建运行的时候，出现说container冲突的话,删除container对应的的ID就行
 docker rm container对应的的ID
 ~~~
+
+### 修改配置文件
+
+启动项目前，请首先修改 config.yaml 中的必要配置信息。
 
 ## License
 
