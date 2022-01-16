@@ -190,15 +190,21 @@ func copyHeader(wHeader http.Header, respHeader http.Header, limitRespHeaders []
 
 	for header, value := range respHeader {
 		// 删除要过滤的
-		if len(limitRespHeaders) > 0 && contains(header, limitRespHeaders) {
-			wHeader.Del(header)
+		if len(limitRespHeaders) > 0 && containsIgnoreCase(header, limitRespHeaders) {
+			var h string
+			for wh := range wHeader {
+				if strings.ToLower(wh) == strings.ToLower(header) {
+					h = wh
+					break
+				}
+			}
+			if len(h) > 0 {
+				wHeader.Del(h)
+			}
 			continue
 		}
 
 		// 要转发的
-		//if len(wHeader.Get(header)) > 0 {
-		//// 	wHeader.Del(header)
-		//}
 		for _, v := range value {
 			wHeader.Add(header, v)
 		}
@@ -313,12 +319,12 @@ func IsNum(s string) bool {
 	return match
 }
 
-func contains(target string, strArray []string) bool {
-	if len(strArray) == 0 {
+func containsIgnoreCase(target string, strArray []string) bool {
+	if len(target) == 0 || len(strArray) == 0 {
 		return false
 	}
 	for _, element := range strArray {
-		if target == element {
+		if strings.ToLower(target) == strings.ToLower(element) {
 			return true
 		}
 	}
