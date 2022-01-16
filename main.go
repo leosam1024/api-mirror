@@ -1,6 +1,11 @@
 package main
 
+import "time"
+
+var ProjectStartTime = time.Now().UnixMilli()
+
 func main() {
+
 	// 初始化日志  -> config.go
 	initLog()
 
