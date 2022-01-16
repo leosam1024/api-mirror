@@ -5,7 +5,7 @@ proxyConfig:
   - desc: "订阅转换服务"
     paths: # URL中PATH 不包含参数 。 可以配置多个
       - path: "/sub"   # URL中PATH 不包含参数 。 可以配置多个
-        # matchType: "exact"  # paths匹配模式, exact：精确匹配、prefix：前缀匹配、regexp：正则匹配
+        matchType: "exact"  # paths匹配模式, exact：精确匹配、prefix：前缀匹配、regexp：正则匹配
       - path: "/version"
         matchType: "exact"
       - path: "/readconf"
@@ -42,7 +42,7 @@ proxyConfig:
       limitRespHeaders: # 要过滤掉的响应头header，大小写敏感
         - "Set-Cookie"
 
-  - desc: "百度-可以全部删除"
+  - desc: "百度-可以删除该部分"
     paths: # URL中PATH 不包含参数 。 可以配置多个
       - path: "/img/"
         matchType: "prefix"

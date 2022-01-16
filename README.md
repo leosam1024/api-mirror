@@ -24,7 +24,7 @@ proxyConfig:
   - desc: "订阅转换服务"
     paths: # URL中PATH 不包含参数 。 可以配置多个
       - path: "/sub"   # URL中PATH 不包含参数 。 可以配置多个
-        # matchType: "exact"  # paths匹配模式, exact：精确匹配、prefix：前缀匹配、regexp：正则匹配
+        matchType: "exact"  # paths匹配模式, exact：精确匹配、prefix：前缀匹配、regexp：正则匹配
       - path: "/version"
         matchType: "exact"
       - path: "/readconf"
@@ -82,8 +82,14 @@ cd api-mirror
 # 构建docker镜像
 docker build ./ -t api-mirror
 
-# 运行docker镜像
+# 运行docker镜像（后台运行）
 docker run -dit --name api-mirror --hostname api-mirror --restart always -p 8899:8899 api-mirror:latest
+
+# 运行docker镜像（前台运行）
+docker run -p 8899:8899  api-mirror:latest
+
+# 运行docker镜像（前台运行+映射本地自定义文件）
+docker run -p 8899:8899 -v /opt/api-mirror/leo.yaml:/config.yaml  api-mirror:latest
 
 # 如果再次构建运行的时候，出现说container冲突的话,删除container对应的的ID就行
 docker rm container对应的的ID

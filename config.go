@@ -117,6 +117,8 @@ func initConfig(configFile string) {
 
 	// 初始化其他信息
 	for index := range ProjectConfig.ProxyConfigs {
+		log.Infof("init HandleFunc desc:[%s], filter:[%+v]", ProjectConfig.ProxyConfigs[index].Desc, ProjectConfig.ProxyConfigs[index].Filter)
+
 		// 设置默认过滤的返回响应头
 		ProjectConfig.ProxyConfigs[index].Filter.LimitRespHeaders = append(ProjectConfig.ProxyConfigs[index].Filter.LimitRespHeaders, "Content-Encoding")
 
@@ -138,10 +140,9 @@ func initConfig(configFile string) {
 				!strings.Contains(ProjectConfig.ProxyConfigs[index].Paths[i].MatchType, PathMatchTypeRegexp) {
 				log.Errorf("desc:[%s],path:[%s],匹配模式不对，matchType：[%s]", ProjectConfig.ProxyConfigs[index].Desc, ProjectConfig.ProxyConfigs[index].Paths[i].Path, ProjectConfig.ProxyConfigs[index].Paths[i].MatchType)
 			}
+			log.Infof("add HandleFunc success, desc:[%s], path:[%s]",
+				ProjectConfig.ProxyConfigs[index].Desc, ProjectConfig.ProxyConfigs[index].Paths[i].Path)
 		}
 	}
 
-	//通过访问结构体成员获取yaml文件中对应的key-value
-	// fmt.Println(serverConfig.Port)
-	//fmt.Println(ProjectConfig.ProxyConfigs)
 }

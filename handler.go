@@ -19,28 +19,15 @@ import (
 func startWeb() {
 	// 设置路由器
 	port := ProjectConfig.Port
-	configs := ProjectConfig.ProxyConfigs
+
 	// 如果在环境变量里定义了端口号，则用环境变量中的
 	if len(os.Getenv(EvnMirrorPort)) > 0 && IsNum(os.Getenv(EvnMirrorPort)) {
 		port, _ = strconv.Atoi(os.Getenv(EvnMirrorPort))
 	}
 
-	http.HandleFunc("/", indexHandler)
+	// 设置处理器
+	http.HandleFunc("/", proxyHandler)
 
-	for i := 0; i < len(configs); i++ {
-		config := configs[i]
-		if len(config.Paths) == 0 {
-			continue
-		}
-		log.Infof("start add http HandleFunc success, desc:[%s], filter:[%+v]", config.Desc, config.Filter)
-		for _, pathConfig := range config.Paths {
-			if len(pathConfig.Path) == 0 {
-				continue
-			}
-			http.HandleFunc(pathConfig.Path, proxyHandler)
-			log.Infof("add http HandleFunc success, desc:[%s], path:[%s]", config.Desc, pathConfig.Path)
-		}
-	}
 	log.Infof("Starting http listen on port:[%d], cost:[%d ms]", port, time.Now().UnixMilli()-ProjectStartTime)
 
 	// 启动web服务
@@ -54,26 +41,6 @@ func startWeb() {
 
 }
 
-// indexHandler 首页Handler
-func indexHandler(writer http.ResponseWriter, request *http.Request) {
-	requestURI := request.URL.RequestURI()
-	// favicon
-	if requestURI == "/favicon.ico" {
-		return
-	}
-
-	// 首页
-	matchIndex, _ := regexp.MatchString(`^(/|/index.html|index)$`, requestURI)
-	if matchIndex {
-		fmt.Fprintf(writer, "api-mirror running...")
-		return
-	}
-
-	// 其他未找到代理器的报错
-	log.Warnf("not find HandleFunc, path:[%s]", requestURI)
-	fmt.Fprintf(writer, "not find HandleFunc, path:[%s]", requestURI)
-}
-
 // proxyHandler 转发Handler  并发请求多个网址，返回最快的
 func proxyHandler(writer http.ResponseWriter, request *http.Request) {
 	// 1. 准备数据
@@ -85,6 +52,20 @@ func proxyHandler(writer http.ResponseWriter, request *http.Request) {
 	// 2. 根据path查找出符合的配置项来
 	var config = findProxyConfig(configs, path)
 	if config.Paths == nil {
+		// favicon
+		if requestURI == "/favicon.ico" {
+			log.Infof("请求成功，耗时%d毫秒：Path：[%s]", time.Now().UnixMilli()-t, requestURI)
+			return
+		}
+
+		// 首页
+		matchIndex, _ := regexp.MatchString(`^(/|/index.html|index)$`, requestURI)
+		if matchIndex {
+			fmt.Fprintf(writer, "api-mirror running...")
+			log.Infof("请求成功，耗时%d毫秒：Path：[%s]", time.Now().UnixMilli()-t, requestURI)
+			return
+		}
+
 		writer.WriteHeader(404)
 		fmt.Fprintf(writer, "未匹配合适Handler：Path：[%s]", requestURI)
 		log.Warnf("未匹配合适Handler：Path：[%s]", requestURI)
