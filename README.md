@@ -83,6 +83,15 @@ $ go get -u -v github.com/leosam2048/api-mirror
 
 注：需要自行安装git和docker环境
 
+docker中央仓库拉取
+
+~~~sh
+# 拉取git仓库
+docker pull leosam2048/api-mirror:latest
+~~~
+
+本地构建docker镜像
+
 ~~~sh
 # 拉取git仓库
 git clone https://github.com/leosam2048/api-mirror.git
@@ -91,16 +100,26 @@ git clone https://github.com/leosam2048/api-mirror.git
 cd api-mirror
 
 # 构建docker镜像
-docker build ./ -t api-mirror
+docker build ./ -t leosam2048/api-mirror:latest
+~~~
 
-# 运行docker镜像（后台运行）
-docker run -dit --name api-mirror --hostname api-mirror --restart always -p 8899:8899 api-mirror:latest
+本地构建docker镜像
 
+~~~sh
 # 运行docker镜像（前台运行）
-docker run -p 8899:8899  api-mirror:latest
+docker run -p 8899:8899  leosam2048/api-mirror:latest
 
 # 运行docker镜像（前台运行+映射本地自定义文件）
-docker run -p 8899:8899 -v /opt/api-mirror/leo.yaml:/config.yaml  api-mirror:latest
+docker run -p 8899:8899 -v /opt/config/api-mirror.yaml:/config.yaml leosam2048/api-mirror:latest
+
+# 运行docker镜像（后台运行）
+docker run -dit --restart always -p 8898:8899 leosam2048/api-mirror:latest
+
+# 运行docker镜像（后台运行+指定容器名称）
+docker run -dit --name api-mirror --hostname api-mirror --restart always -p 8899:8899 leosam2048/api-mirror:latest
+
+# 运行docker镜像（后台运行+指定容器名称+映射本地自定义文件）
+docker run -dit --name api-mirror --hostname api-mirror --restart always -p 8899:8899 -v /opt/config/api-mirror.yaml:/config.yaml  leosam2048/api-mirror:latest
 
 # 如果再次构建运行的时候，出现说container冲突的话,删除container对应的的ID就行
 docker rm container对应的的ID

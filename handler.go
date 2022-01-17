@@ -28,7 +28,13 @@ func startWeb() {
 	// 设置处理器
 	http.HandleFunc("/", proxyHandler)
 
-	log.Infof("Starting http listen on port:[%d], cost:[%d ms]", port, time.Now().UnixMilli()-ProjectStartTime)
+	if port > 0 {
+		// 启动成功
+		log.Infof("Starting http listen on port:[%d], cost:[%d ms]", port, time.Now().UnixMilli()-ProjectStartTime)
+	} else {
+		// 启动失败
+		log.Errorf("failed to activate http on port:[%d], cost:[%d ms]", port, time.Now().UnixMilli()-ProjectStartTime)
+	}
 
 	// 启动web服务
 	err := http.ListenAndServe(
@@ -51,8 +57,9 @@ func proxyHandler(writer http.ResponseWriter, request *http.Request) {
 
 	// 2. 根据path查找出符合的配置项来
 	var config = findProxyConfig(configs, path)
+	// 2.1 没有查找到
 	if config.Paths == nil {
-		// favicon
+		// favicon.ico
 		if requestURI == "/favicon.ico" {
 			log.Infof("请求成功，耗时%d毫秒：Path：[%s]", time.Now().UnixMilli()-t, requestURI)
 			return
@@ -71,6 +78,7 @@ func proxyHandler(writer http.ResponseWriter, request *http.Request) {
 		log.Warnf("未匹配合适Handler：Path：[%s]", requestURI)
 		return
 	}
+
 	// 3. 开启限流器，现在高并发请求
 	if config.Filter.Limiter != nil && !config.Filter.Limiter.Allow() {
 		fmt.Fprintf(writer, "QPS超出系统限制，请稍后再试")

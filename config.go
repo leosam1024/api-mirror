@@ -106,7 +106,7 @@ func initConfig(configFile string) {
 
 	config, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		log.Info(err)
+		log.Error(err)
 	}
 
 	// yaml文件内容影射到结构体中
