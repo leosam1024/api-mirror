@@ -62,6 +62,34 @@ proxyConfig:
         - "Set-Cookie"
 ~~~
 
+精简版
+
+~~~yaml
+# http服务启动端口
+port: 8899
+
+proxyConfig:
+  - desc: "订阅转换服务"
+    paths: # URL中PATH 不包含参数 。 可以配置多个
+      - path: "/"   # URL中PATH 不包含参数 。 可以配置多个
+        matchType: "prefix"  # paths匹配模式, exact：精确匹配、prefix：前缀匹配、regexp：正则匹配
+    hosts: # 要并发访问的host
+      - host: "https://id9.cc"
+        weight: 1
+      - host: "https://sub.xeton.dev"
+        weight: 1
+      - host: "https://api.dler.io"
+        weight: 1
+      - host: "https://sub.maoxiongnet.com"
+        weight: 1
+    filter:
+      timeOut: 5000     # 超时时间 单位毫秒
+      limitQps: 20      # 限流器，每秒只允许limiterQps访问,超过就
+      limitHosts: 3     # 如果hosts数量过多，则随机选limit个进行请求
+      limitRespHeaders: # 要过滤掉的响应头header，大小写敏感
+        - "Set-Cookie"
+~~~
+
 ## 安装和启动
 
 ### 使用
