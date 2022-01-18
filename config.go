@@ -1,6 +1,8 @@
 package main
 
 import (
+	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
+	"github.com/rifflock/lfshook"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
 	"gopkg.in/yaml.v2"
@@ -74,18 +76,14 @@ func (s ProxyHostConfigs) Less(i, j int) bool { return s[i].Weight > s[j].Weight
 var ProjectConfig ServerProjectConfig
 
 func initLog() {
-	//var log = logrus.New().WithFields(logrus.Fields{})
 
 	// 设置日志格式为json格式
-	// log.SetFormatter(&log.JSONFormatter{})
-
 	// force colors on for TextFormatter
 	log.SetFormatter(&log.TextFormatter{
 		EnvironmentOverrideColors: true,
 		ForceColors:               true,
 		FullTimestamp:             true,
 		TimestampFormat:           "2006-01-02 15:04:05",
-		// DisableSorting:true,
 	})
 
 	// 设置将日志输出到标准输出（默认的输出为stderr，标准错误）
@@ -93,6 +91,29 @@ func initLog() {
 	log.SetOutput(os.Stdout)
 	// logfile, _ := os.OpenFile("./app.log", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
 	// logrus.SetOutput(logfile)
+
+	//同时写文件和屏幕
+	//writers := []io.Writer{os.Stdout, logfile}
+	//fileAndStdoutWriter := io.MultiWriter(writers...)
+	//log.SetOutput(fileAndStdoutWriter)
+
+	// 设置将日志输出到标准输出（默认的输出为stderr，标准错误）
+	// 日志消息输出可以是任意的io.writer类型
+	path := "logs/api-mirror.log"
+	// 下面配置日志每隔 1 小时轮转一个新文件，保留最近 48 小时的日志文件，多余的自动清理掉。
+	fileWriter, _ := rotatelogs.New(
+		path+".%Y-%m-%d_%H",
+		// `WithLinkName` 为最新的日志建立软连接
+		rotatelogs.WithLinkName(path),
+		// WithRotationTime 设置日志分割的时间，隔多久分割一次
+		// WithMaxAge 设置文件清理前的最长保存时间
+		// WithMaxAge 和 WithRotationCount二者只能设置一个
+		rotatelogs.WithRotationTime(time.Duration(1)*time.Hour),
+		rotatelogs.WithMaxAge(time.Duration(48)*time.Hour),
+		//  `WithRotationCount` 设置文件清理前最多保存的个数
+	)
+
+	log.AddHook(lfshook.NewHook(fileWriter, &log.TextFormatter{DisableColors: true, TimestampFormat: "2006-01-02 15:04:05"}))
 
 	// 设置日志级别为warn以上
 	// logrus.SetLevel(logrus.InfoLevel)
