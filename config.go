@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 	"github.com/rifflock/lfshook"
 	log "github.com/sirupsen/logrus"
@@ -15,7 +16,8 @@ import (
 
 const (
 	DefaultTimeoutDuration time.Duration = 5000
-	EvnMirrorPort          string        = "MIRROR-PORT"
+	EvnMirrorPort          string        = "MIRROR_PORT"
+	EvnMirrorConfigFile    string        = "MIRROR_CONFIG_FILE"
 	PathMatchTypeExact     string        = "exact"
 	PathMatchTypePrefix    string        = "prefix"
 	PathMatchTypeRegexp    string        = "regexp"
@@ -36,6 +38,7 @@ type ProxyConfig struct {
 type ProxyPathConfig struct {
 	Path      string `yaml:"path"`
 	MatchType string `yaml:"matchType"`
+	Remove    string `yaml:"remove"`
 }
 
 type ProxyHostConfig struct {
@@ -124,8 +127,7 @@ func initLog() {
 }
 
 func initConfig(configFile string) {
-
-	config, err := ioutil.ReadFile(configFile)
+	config, _, err := getConfigContent(configFile)
 	if err != nil {
 		log.Error(err)
 	}
@@ -168,4 +170,36 @@ func initConfig(configFile string) {
 		}
 	}
 
+}
+
+// 从config获取内容，支持多个参数，支持http和磁盘路径
+func getConfigContent(configFileStr string) ([]byte, string, error) {
+	var content []byte
+	var filePath string
+	var err = errors.New("取读文件或者URL错误错误")
+
+	configFiles := strings.Split(configFileStr, ",")
+	for _, configFile := range configFiles {
+		if len(strings.TrimSpace(configFile)) == 0 {
+			continue
+		}
+		filePath = configFile
+		if strings.HasPrefix(configFile, "http") {
+			// 从网络读取
+			content, _ = getRequestByAll(filePath, "get", nil, nil, 5000)
+			if len(content) > 10 && string(content) != "httpError" {
+				log.Infof("网络配置文件读取成功，configUrl:[%s]", filePath)
+				break
+			}
+			log.Errorf("网络配置文件读取失败，configUrl:[%s]", filePath)
+		} else {
+			content, err = ioutil.ReadFile(filePath)
+			if len(content) > 0 && err == nil {
+				log.Infof("本地配置文件读取成功，configPath:[%s]", filePath)
+				break
+			}
+			log.Errorf("本地配置文件读取失败，configPath:[%s]", filePath)
+		}
+	}
+	return content, filePath, err
 }

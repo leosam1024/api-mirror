@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	http "net/http"
-	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -16,29 +16,21 @@ import (
 )
 
 // 初始化web服务
-func startWeb() {
-	// 设置路由器
-	port := ProjectConfig.Port
-
-	// 如果在环境变量里定义了端口号，则用环境变量中的
-	if len(os.Getenv(EvnMirrorPort)) > 0 && IsNum(os.Getenv(EvnMirrorPort)) {
-		port, _ = strconv.Atoi(os.Getenv(EvnMirrorPort))
-	}
-
+func startWeb(httpServerPort int) {
 	// 设置处理器
 	http.HandleFunc("/", proxyHandler)
 
-	if port > 0 {
+	if httpServerPort > 0 {
 		// 启动成功
-		log.Infof("Starting http listen on port:[%d], cost:[%d ms]", port, time.Now().UnixMilli()-ProjectStartTime)
+		log.Infof("Starting http listen on port:[%d], cost:[%d ms]", httpServerPort, time.Now().UnixMilli()-ProjectStartTime)
 	} else {
 		// 启动失败
-		log.Errorf("failed to activate http on port:[%d], cost:[%d ms]", port, time.Now().UnixMilli()-ProjectStartTime)
+		log.Errorf("failed to activate http on port:[%d], cost:[%d ms]", httpServerPort, time.Now().UnixMilli()-ProjectStartTime)
 	}
 
 	// 启动web服务
 	err := http.ListenAndServe(
-		":"+strconv.Itoa(port),
+		":"+strconv.Itoa(httpServerPort),
 		nil,
 	)
 	if err != nil {
@@ -122,20 +114,23 @@ func findProxyConfig(configs []ProxyConfig, path string) ProxyConfig {
 			if pathConfig.isExactMatchType() && pathConfig.Path == path {
 				find = true
 			}
-			if pathConfig.isPrefixMatchType() && strings.HasPrefix(pathConfig.Path, path) {
+			if pathConfig.isPrefixMatchType() && strings.HasPrefix(path, pathConfig.Path) {
 				find = true
 			}
-			if pathConfig.isPrefixMatchType() {
+			if pathConfig.isRegexpMatchType() {
 				matched, _ := regexp.MatchString(pathConfig.Path, path)
 				find = matched
 			}
 			if find {
+				// 复制一份
+				// 只保留匹配的即可
+				copyPaths := []ProxyPathConfig{pathConfig}
 				// 深复制一份
 				copyHosts := make([]ProxyHostConfig, len(config.Hosts))
 				copy(copyHosts, config.Hosts)
 				proxyConfig = ProxyConfig{
 					Desc:   config.Desc,
-					Paths:  config.Paths,
+					Paths:  copyPaths,
 					Hosts:  copyHosts,
 					Filter: config.Filter,
 				}
@@ -209,6 +204,11 @@ func mirroredQuery(request *http.Request, config ProxyConfig) (string, []byte, i
 	if timeOut <= 0 {
 		timeOut = DefaultTimeoutDuration
 	}
+	// 执行去除
+	configPath := config.Paths[0]
+	if len(configPath.Remove) > 0 {
+		requestURI = strings.Replace(requestURI, configPath.Remove, "", 1)
+	}
 	requestBodyBytes := getRequestBody(request)
 	// 并发执行请求
 	hostChan := make(chan string, len(hosts))
@@ -271,7 +271,10 @@ func getRequestByAll(url string, method string, requestHeader http.Header, reque
 	if timeOut <= 0 {
 		timeOut = DefaultTimeoutDuration
 	}
-	requestBody := ioutil.NopCloser(bytes.NewBuffer(requestBodyBytes))
+	var requestBody io.ReadCloser
+	if len(requestBodyBytes) > 0 {
+		requestBody = ioutil.NopCloser(bytes.NewBuffer(requestBodyBytes))
+	}
 	req, err := http.NewRequest(method, url, requestBody)
 	if err != nil {
 		//panic(err)
@@ -287,6 +290,8 @@ func getRequestByAll(url string, method string, requestHeader http.Header, reque
 			}
 			req.Header.Set(key, headers[0])
 		}
+	} else {
+		req.Header.Set("user-agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36")
 	}
 
 	client := &http.Client{Timeout: timeOut * time.Millisecond}

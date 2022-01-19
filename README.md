@@ -25,6 +25,7 @@ proxyConfig:
     paths: # URL中PATH 不包含参数 。 可以配置多个
       - path: "/sub"   # URL中PATH 不包含参数 。 可以配置多个
         matchType: "exact"  # paths匹配模式, exact：精确匹配、prefix：前缀匹配、regexp：正则匹配
+        remove: ""          # 去除字符串，在请求之前，将请求URL中PATH的path去掉改字符串
       - path: "/version"
         matchType: "exact"
       - path: "/readconf"
@@ -140,6 +141,9 @@ docker run -p 8899:8899  leosam2048/api-mirror:latest
 # 运行docker镜像（前台运行+映射本地自定义文件）
 docker run -p 8899:8899 -v /opt/config/api-mirror.yaml:/config.yaml leosam2048/api-mirror:latest
 
+# 运行docker镜像（前台运行+使用远程配置文件）
+docker run -p 8899:8899 -e MIRROR_CONFIG_FILE="https://example.com/api.yaml,config.yaml" leosam2048/api-mirror:latest
+
 # 运行docker镜像（后台运行）
 docker run -dit --restart always -p 8898:8899 leosam2048/api-mirror:latest
 
@@ -156,6 +160,24 @@ docker rm container对应的的ID
 ### 修改配置文件
 
 启动项目前，请首先修改 config.yaml 中的必要配置信息。
+
+程序指定配置文件优先级：从高到底
+
+~~~
+1. 使用运行参数 c指定
+./api-mirror -c config.yaml
+
+2. 通过环境变量 MIRROR_CONFIG_FILE 指定 ，添加环境变量或者docker
+docker run -e MIRROR_CONFIG_FILE="config.yaml"
+
+3. 兜底使用程序目录下的 config.yaml。无需指定
+~~~
+
+配置文件路径可以配置多个，使用逗号分隔，支持网络地址和磁盘地址。程序运行时，会依次取读，如果取读成功，则使用该配置文件
+
+~~~
+./api-mirror -c https://example.com/api.yaml,config.yaml,/opt/config.yaml
+~~~
 
 ## License
 
