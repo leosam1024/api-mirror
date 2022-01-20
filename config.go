@@ -176,7 +176,7 @@ func initConfig(configFile string) {
 func getConfigContent(configFileStr string) ([]byte, string, error) {
 	var content []byte
 	var filePath string
-	var err = errors.New("取读文件或者URL错误错误")
+	var configErr error
 
 	configFiles := strings.Split(configFileStr, ",")
 	for _, configFile := range configFiles {
@@ -186,20 +186,23 @@ func getConfigContent(configFileStr string) ([]byte, string, error) {
 		filePath = configFile
 		if strings.HasPrefix(configFile, "http") {
 			// 从网络读取
-			content, _ = getRequestByAll(filePath, "get", nil, nil, 5000)
-			if len(content) > 10 && string(content) != "httpError" {
+			content, _ = getRequestByAll(filePath, "GET", nil, nil, 5000)
+			if len(content) > 10 && string(content) != "httpError" && strings.Contains(string(content), "port") {
+				configErr = nil
 				log.Infof("网络配置文件读取成功，configUrl:[%s]", filePath)
 				break
 			}
+			configErr = errors.New("网络配置文件读取失败")
 			log.Errorf("网络配置文件读取失败，configUrl:[%s]", filePath)
 		} else {
-			content, err = ioutil.ReadFile(filePath)
-			if len(content) > 0 && err == nil {
+			content, configErr = ioutil.ReadFile(filePath)
+			if configErr == nil && len(content) > 0 && strings.Contains(string(content), "port") {
 				log.Infof("本地配置文件读取成功，configPath:[%s]", filePath)
 				break
 			}
+			configErr = errors.New("本地配置文件读取失败")
 			log.Errorf("本地配置文件读取失败，configPath:[%s]", filePath)
 		}
 	}
-	return content, filePath, err
+	return content, filePath, configErr
 }

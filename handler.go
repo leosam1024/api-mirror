@@ -268,6 +268,7 @@ func getRequestByAll(url string, method string, requestHeader http.Header, reque
 	if len(method) == 0 {
 		method = "GET"
 	}
+	method = strings.ToUpper(strings.TrimSpace(method))
 	if timeOut <= 0 {
 		timeOut = DefaultTimeoutDuration
 	}
