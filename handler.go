@@ -148,12 +148,12 @@ func findProxyConfig(configs []ProxyConfig, path string) ProxyConfig {
 		if len(config.Paths) == 0 {
 			continue
 		}
+		find := false
 		for j := 0; j < len(config.Paths); j++ {
 			pathConfig := config.Paths[j]
 			if len(pathConfig.Path) == 0 {
 				continue
 			}
-			find := false
 			if pathConfig.isExactMatchType() && pathConfig.Path == path {
 				find = true
 			}
@@ -179,6 +179,9 @@ func findProxyConfig(configs []ProxyConfig, path string) ProxyConfig {
 				}
 				break
 			}
+		}
+		if find {
+			break
 		}
 	}
 
