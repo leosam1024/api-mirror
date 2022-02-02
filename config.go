@@ -8,6 +8,8 @@ import (
 	"golang.org/x/time/rate"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
 	"reflect"
 	"strings"
@@ -76,7 +78,22 @@ func (s ProxyHostConfigs) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
 func (s ProxyHostConfigs) Less(i, j int) bool { return s[i].Weight > s[j].Weight }
 
-var ProjectConfig ServerProjectConfig
+var (
+	ProjectConfig ServerProjectConfig
+	HttpTransport http.RoundTripper = &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		MaxIdleConnsPerHost:   20,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+)
 
 func initLog() {
 

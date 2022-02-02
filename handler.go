@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"math/rand"
 	http "net/http"
+	"net/http/httputil"
+	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
@@ -78,23 +80,64 @@ func proxyHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	// 4. 请求代理，活动最快的结果
-	host, responseBodyByte, statusCode, header := mirroredQuery(request, config)
-
-	// 5. 处理响应 顺序不能乱
-	// 5.1 处理响应 => 先处理响应头
-	copyHeader(writer.Header(), header, config.Filter.LimitRespHeaders)
-	// 5.2 处理响应 => 在处理返回code
-	writer.WriteHeader(statusCode)
-	// 5.3 处理响应 => 处理响应体
-	writer.Write(responseBodyByte)
-
-	// 6. 打印日志
-	if len(responseBodyByte) < 10 && string(responseBodyByte) == "httpError" {
-		log.Warnf("请求失败，耗时%d毫秒，Limit：[%d]，使用HOST：[%+v]，Path：[%s]", time.Now().UnixMilli()-t, config.Filter.LimitHosts, config.Hosts, requestURI)
-	} else {
-		log.Infof("请求成功，耗时%d毫秒，Limit：[%d]，使用HOST：[%s]，Path：[%s]", time.Now().UnixMilli()-t, config.Filter.LimitHosts, host, requestURI)
+	// 4.1 请求代理-找不到要转发的
+	if len(config.Hosts) < 1 {
+		fmt.Fprintf(writer, "未提供对应转发host")
+		log.Warnf("未提供对应转发host,Path：[%s]", requestURI)
+		return
 	}
+
+	// 4.2 请求代理-如果只有一个而直接使用反向代理即可
+	if len(config.Hosts) == 1 {
+		host := config.Hosts[0].Host
+		forwardHandler(writer, request, config)
+		log.Infof("请求成功，耗时%d毫秒，Limit：[%d]，使用HOST：[%s]，Path：[%s]", time.Now().UnixMilli()-t, config.Filter.LimitHosts, host, requestURI)
+		return
+	}
+
+	// 4.3 请求代理，如果有多个，则并发请求，返回最快的结果
+	if len(config.Hosts) > 1 {
+		// 请求代理，返回最快的结果
+		host, responseBodyByte, statusCode, header := mirroredQuery(request, config)
+
+		// 5. 处理响应 顺序不能乱
+		// 5.1 处理响应 => 先处理响应头
+		copyHeader(writer.Header(), header, config.Filter.LimitRespHeaders)
+		// 5.2 处理响应 => 在处理返回code
+		writer.WriteHeader(statusCode)
+		// 5.3 处理响应 => 处理响应体
+		writer.Write(responseBodyByte)
+
+		// 6. 打印日志
+		if len(responseBodyByte) < 10 && string(responseBodyByte) == "httpError" {
+			log.Warnf("请求失败，耗时%d毫秒，Limit：[%d]，使用HOST：[%+v]，Path：[%s]", time.Now().UnixMilli()-t, config.Filter.LimitHosts, config.Hosts, requestURI)
+		} else {
+			log.Infof("请求成功，耗时%d毫秒，Limit：[%d]，使用HOST：[%s]，Path：[%s]", time.Now().UnixMilli()-t, config.Filter.LimitHosts, host, requestURI)
+		}
+	}
+}
+
+// 转发请求
+func forwardHandler(writer http.ResponseWriter, request *http.Request, config ProxyConfig) {
+	// 解析要整理的代理域名
+	proxyUrl, err := url.Parse(config.Hosts[0].Host)
+	if nil != err {
+		log.Println(err)
+		return
+	}
+
+	// 整理请求头
+	if len(config.Paths[0].Remove) > 0 {
+		request.RequestURI = strings.Replace(request.RequestURI, config.Paths[0].Remove, "", 1)
+		request.URL.Path = strings.Replace(request.URL.Path, config.Paths[0].Remove, "", 1)
+	}
+	request.Host = proxyUrl.Host
+
+	// 创建代理请求
+	proxy := httputil.NewSingleHostReverseProxy(proxyUrl)
+
+	// 进行请求
+	proxy.ServeHTTP(writer, request)
 }
 
 func findProxyConfig(configs []ProxyConfig, path string) ProxyConfig {
@@ -218,8 +261,8 @@ func mirroredQuery(request *http.Request, config ProxyConfig) (string, []byte, i
 	for i := 0; i < len(hosts); i++ {
 		num := i
 		go func() {
-			url := hosts[num].Host + requestURI
-			body, response := getRequestByAll(url, method, request.Header, requestBodyBytes, timeOut)
+			targetUrl := hosts[num].Host + requestURI
+			body, response := getRequestByAll(targetUrl, method, request.Header, requestBodyBytes, timeOut)
 			hostChan <- hosts[num].Host
 			responseChan <- response
 			responseBodyChan <- body
@@ -295,7 +338,7 @@ func getRequestByAll(url string, method string, requestHeader http.Header, reque
 		req.Header.Set("user-agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36")
 	}
 
-	client := &http.Client{Timeout: timeOut * time.Millisecond}
+	client := &http.Client{Transport: HttpTransport, Timeout: timeOut * time.Millisecond}
 	resp, err := client.Do(req)
 	if err != nil {
 		//panic(err)
@@ -306,12 +349,6 @@ func getRequestByAll(url string, method string, requestHeader http.Header, reque
 
 	bodyBytes, _ := ioutil.ReadAll(resp.Body)
 	return bodyBytes, resp
-}
-
-// IsNum 判断是否是数字
-func IsNum(s string) bool {
-	match, _ := regexp.MatchString(`^[\+-]?\d+$`, s)
-	return match
 }
 
 func containsIgnoreCase(target string, strArray []string) bool {
