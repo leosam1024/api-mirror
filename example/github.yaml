@@ -1,0 +1,48 @@
+# http服务启动端口
+port: 8899
+
+proxyConfig:
+  - desc: "github"
+    paths: # URL中PATH 不包含参数 。 可以配置多个
+      - path: "/github.com"
+        matchType: "prefix"
+        remove: "/github.com"
+    hosts: # 要并发访问的host
+      - host: "https://github.com"
+        weight: 1
+    filter:
+      timeOut: 60000     # 超时时间 单位毫秒
+      limitQps: 200     # 限流器，每秒只允许limiterQps访问,超过就
+      limitHosts: 1     # 如果hosts数量过多，则随机选limit个进行请求
+      limitRespHeaders: # 要过滤掉的响应头header，大小写敏感
+        - "Set-Cookie"
+
+  - desc: "github-raw"
+    paths: # URL中PATH 不包含参数 。 可以配置多个
+      - path: "/raw.githubusercontent.com"
+        matchType: "prefix"
+        remove: "/raw.githubusercontent.com"
+    hosts: # 要并发访问的host
+      - host: "https://raw.githubusercontent.com"
+        weight: 1
+    filter:
+      timeOut: 5000     # 超时时间 单位毫秒
+      limitQps: 200     # 限流器，每秒只允许limiterQps访问,超过就
+      limitHosts: 1     # 如果hosts数量过多，则随机选limit个进行请求
+      limitRespHeaders: # 要过滤掉的响应头header，大小写敏感
+        - "Set-Cookie"
+
+  - desc: "github-usercontent"
+    paths: # URL中PATH 不包含参数 。 可以配置多个
+      - path: "/objects.githubusercontent.com"
+        matchType: "prefix"
+        remove: "/objects.githubusercontent.com"
+    hosts: # 要并发访问的host
+      - host: "https://objects.githubusercontent.com"
+        weight: 1
+    filter:
+      timeOut: 5000     # 超时时间 单位毫秒
+      limitQps: 200     # 限流器，每秒只允许limiterQps访问,超过就
+      limitHosts: 1     # 如果hosts数量过多，则随机选limit个进行请求
+      limitRespHeaders: # 要过滤掉的响应头header，大小写敏感
+        - "Set-Cookie"
